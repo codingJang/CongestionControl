@@ -5,16 +5,7 @@ import gym
 import numpy as np
 
 """
-class Car:
-    def __init__(self, start, end):
-        self.start = start
-        self.end = end
-    def nearest_intermediate_node(self, fringe_node):
-        # calculate nearest_intermediate_node
-        pass
-    def create_path(self):
-        start_interm = self.nearest_intermediate_node(self.start).coord
-        end_interm = self.nearest_intermediate_node(self.end).coord
+
 
 class Traffic(MultiAgentEnv):
     def __init__(self, config=None):

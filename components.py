@@ -3,23 +3,28 @@ from pygame.sprite import Sprite
 from pygame.math import Vector2
 from methods import *
 
-__all__ = ['Intersection', 'Node', 'Graph']
+__all__ = ['Component', 'Intersection', 'Node', 'Graph']
 
 
 class Component(Sprite):
-    dir_dict = {'E':(0,1), 'N':(-1,0), 'W':(0,-1), 'S':(1,0)}
+    """
+    Base class for all components needed in the Congestion Control Simulation.
+    """
+    # Static variables
+    # (i, j) : i = distance from top, j = distance from left
+    dir_dict = {'E':(0,1), 'N':(-1,0), 'W':(0,-1), 'S':(1,0)}  
     opposite_dir = {'E':'W', 'N':'S', 'W':'E', 'S':'N'}
     turn_left_dir = {'E':'S', 'N':'E', 'W':'N', 'S':'W'}
     turn_right_dir = {'E':'N', 'N':'W', 'W':'S', 'S':'E'}
 
     def __init__(self):
         super(Component, self).__init__()
+        self.display_image = None
+        self.loc = None
 
     def blit(self, screen):
         center_blit(self, screen)
-    
-    def set_color(self):
-        self.color = pygame.color.Color(255, 255, 255)
+
 
 class Intersection(Component):
     """
@@ -84,28 +89,22 @@ class Node(Component):
         return is_eq
     
     def __str__(self):
-        return f"i={self.loc.y/300:.2f}, j={self.loc.x/300:.2f}, dir={self.dir}, is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
+        return f"i={self.loc.y/240:.2f}, j={self.loc.x/240:.2f}, dir={self.dir}, is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
 
     def set_color(self):
         color_value = (255, 0, 0) if self.is_incoming else (0, 0, 255)
         self.color = pygame.color.Color(*color_value)
     
     def set_location(self):
-        print('self.inter.loc', self.inter.loc)
-        node_loc = self.inter.loc
+        node_loc = Vector2(self.inter.loc)
         dir_dict = Component.dir_dict
         turn_left_dir = Component.turn_left_dir
         turn_right_dir = Component.turn_right_dir
-        node_loc += 0.1 * to_vector2(dir_dict[self.dir])
-        print('+0.1 *', to_vector2(dir_dict[self.dir]))
+        node_loc += 0.20 * to_vector2(dir_dict[self.dir])
         if self.is_incoming:
-            print('+0.05 *', to_vector2(dir_dict[turn_left_dir[self.dir]]))
-            node_loc += 0.05 * to_vector2(dir_dict[turn_left_dir[self.dir]])
+            node_loc += 0.08 * to_vector2(dir_dict[turn_left_dir[self.dir]])
         else:
-            print('+0.05 *', to_vector2(dir_dict[turn_right_dir[self.dir]]))
-            node_loc += 0.05 * to_vector2(dir_dict[turn_right_dir[self.dir]])
-        print("node_loc", node_loc)
-        print()
+            node_loc += 0.08 * to_vector2(dir_dict[turn_right_dir[self.dir]])
         self.loc = node_loc
 
     
@@ -134,8 +133,11 @@ class Edge(Component):
     def __str__(self):
         return 'from | ' + str(self.start_node) + '\nto | ' + str(self.end_node)
     
+    def set_color(self):
+        self.color = pygame.color.Color(255, 255, 255)
+    
     def blit(self, screen):
-        pygame.draw.line(screen, self.color, self.start_node.loc, self.end_node.loc, 2)
+        pygame.draw.line(screen, self.color, self.start_node.loc, self.end_node.loc, 3)
 
 
 class Graph(Component):
@@ -146,13 +148,7 @@ class Graph(Component):
         self.construct_inters()
         self.construct_nodes()
         self.construct_edges()
-        for k, inter in enumerate(self.inters):
-            print(k, inter)
-        for k, node in enumerate(self.nodes):
-            print(k, node)
-        for k, edge in enumerate(self.edges):
-            print(k, edge)
-
+    
     def construct_inters(self):
         H = self.H
         L = self.L
@@ -234,14 +230,14 @@ class Graph(Component):
         for edge in self.edges:
             edge.blit(screen)
 
-# initialization tests
+# initialization test
 if __name__ == '__main__':
     pygame.init()
     logo = pygame.image.load('images/logo_32x32.png')
     pygame.display.set_icon(logo)
     pygame.display.set_caption('Congestion Control Simulation')
-    screen = pygame.display.set_mode((1080, 1080))
-    graph = Graph(2, 2)
+    screen = pygame.display.set_mode((960, 960))
+    graph = Graph(3, 3)
     graph.blit(screen)
     pygame.display.flip()
     running = True

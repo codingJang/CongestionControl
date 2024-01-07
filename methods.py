@@ -20,4 +20,4 @@ def center_rect(sprite):
                                                 sprite.loc.y - sprite.height/2)
 
 def to_vector2(tuple):
-    return Vector2(300 * tuple[1], 300 * tuple[0])
+    return Vector2(240 * tuple[1], 240 * tuple[0])
