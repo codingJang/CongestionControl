@@ -1,10 +1,8 @@
-
+"""
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import pygame
 import gym
 import numpy as np
-
-"""
 
 
 class Traffic(MultiAgentEnv):
