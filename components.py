@@ -3,7 +3,7 @@ from pygame.sprite import Sprite
 from pygame.math import Vector2
 from methods import *
 
-__all__ = ['Component', 'Intersection', 'Node', 'Graph']
+__all__ = ['Component', 'Intersection', 'Node', 'Edge', 'Graph']
 
 
 class Component(Sprite):
@@ -12,7 +12,7 @@ class Component(Sprite):
     """
     # Static variables
     # (i, j) : i = distance from top, j = distance from left
-    dir_dict = {'E':(0,1), 'N':(-1,0), 'W':(0,-1), 'S':(1,0)}  
+    dir_dict = {'E':(0,1), 'N':(-1,0), 'W':(0,-1), 'S':(1,0)}
     opposite_dir = {'E':'W', 'N':'S', 'W':'E', 'S':'N'}
     turn_left_dir = {'E':'S', 'N':'E', 'W':'N', 'S':'W'}
     turn_right_dir = {'E':'N', 'N':'W', 'W':'S', 'S':'E'}
@@ -22,14 +22,14 @@ class Component(Sprite):
         self.display_image = None
         self.loc = None
 
-    def blit(self, screen):
+    def blit(self, screen):  # Assumes the object has self.display_image
         center_blit(self, screen)
 
 
 class Intersection(Component):
     """
     Intersection class.
-    Includes coordinates member variables, == operation and + operation.
+    Includes coordinates i, j as member variables, == operation and + operation.
     """
     def __init__(self, i, j):
         """
@@ -40,22 +40,30 @@ class Intersection(Component):
         super(Intersection, self).__init__()
         self.i = i
         self.j = j
+        # loc is a pygame.math.Vector2 object, with loc.x=c*j and loc.y=c*i for some c.
         self.loc = to_vector2((i, j))
         self.set_image('images/intersection.png')
 
-    def __eq__(self, other):  # compare coordinates
+    def __eq__(self, other):
         return self.i == other.i and self.j == other.j
     
     def __add__(self, other):
         """
         Adds tuples of the form (int, int) to get Intersection with new coordinates.
+        :param other: tuple of the form (int, int)
         """
-        return Intersection(self.i + other[0], self.j + other[1])
+        if isinstance(other[0], int) and isinstance(other[1], int):
+            return Intersection(self.i + other[0], self.j + other[1])
+        else:
+            raise ValueError('The right hand side should be a tuple of the form (int, int).')
     
     def __str__(self):
-        return f"i={self.i}, j={self.j}"
+        return f"Intersection at: i={self.i}, j={self.j}"
 
-    def set_image(self, path=None):  # Choose image and set location
+    def set_image(self, path=None):
+        """
+        Sets display image and location.
+        """
         if path is not None:
             self.image = pygame.image.load(path)
             self.display_image = self.image
@@ -89,7 +97,7 @@ class Node(Component):
         return is_eq
     
     def __str__(self):
-        return f"i={self.loc.y/240:.2f}, j={self.loc.x/240:.2f}, dir={self.dir}, is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
+        return f"i={self.inter.i}, j={self.inter.j}, dir={self.dir}, is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
 
     def set_color(self):
         color_value = (255, 0, 0) if self.is_incoming else (0, 0, 255)
