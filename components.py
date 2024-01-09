@@ -1,6 +1,7 @@
 import pygame
 from pygame.sprite import Sprite
 from pygame.math import Vector2
+from collections import deque
 from methods import *
 
 __all__ = ['Component', 'Intersection', 'Node', 'Edge', 'Graph']
@@ -12,18 +13,23 @@ class Component(Sprite):
     """
     # Static variables
     # (i, j) : i = distance from top, j = distance from left
-    dir_dict = {'E':(0,1), 'N':(-1,0), 'W':(0,-1), 'S':(1,0)}
-    opposite_dir = {'E':'W', 'N':'S', 'W':'E', 'S':'N'}
-    turn_left_dir = {'E':'S', 'N':'E', 'W':'N', 'S':'W'}
-    turn_right_dir = {'E':'N', 'N':'W', 'W':'S', 'S':'E'}
+    tup_dir_dict = {'E':(0,1), 'N':(-1,0), 'W':(0,-1), 'S':(1,0)}
+    op_dir_dict = {'E':'W', 'N':'S', 'W':'E', 'S':'N'}
+    lt_dir_dict = {'E':'S', 'N':'E', 'W':'N', 'S':'W'}
+    rt_dir_dict = {'E':'N', 'N':'W', 'W':'S', 'S':'E'}
 
-    def __init__(self):
+    def __init__(self, time=0):
         super(Component, self).__init__()
-        self.display_image = None
-        self.loc = None
+        self.time = time
+        self.init_time = time
 
-    def blit(self, screen):  # Assumes the object has self.display_image
-        center_blit(self, screen)
+    def blit(self, screen=None):
+        pass
+    
+    def step(self, action, screen=None):
+        self.t += 1
+        if screen is not None:
+            self.blit(screen)
 
 
 class Intersection(Component):
@@ -31,15 +37,16 @@ class Intersection(Component):
     Intersection class.
     Includes coordinates i, j as member variables, == operation and + operation.
     """
-    def __init__(self, i, j):
+    def __init__(self, i, j, time=0):
         """
         Initializes Intersection object.
         :param i: number of blocks counted from top to bottom.
         :param j: number of blocks counted from left to right.
         """
-        super(Intersection, self).__init__()
+        super(Intersection, self).__init__(time=time)
         self.i = i
         self.j = j
+        self.mode = None
         # loc is a pygame.math.Vector2 object, with loc.x=c*j and loc.y=c*i for some c.
         self.loc = to_vector2((i, j))
         self.set_image('images/intersection.png')
@@ -72,6 +79,16 @@ class Intersection(Component):
         self.rect = center_rect(self)
         self.mask = pygame.mask.from_surface(self.display_image)
         
+    def blit(self, screen=None):
+        center_blit(self, screen)
+
+    def step(self, action, screen=None):
+        if action is None:
+            action = (self.t % 16) // 2
+        else:
+            self.action = action
+        self.blit(screen)
+        super(Intersection, self).step(screen=screen)
 
 
 class Node(Component):
@@ -79,12 +96,16 @@ class Node(Component):
     Node at a given intersection oriented in some direction,
     with bool values for is_incoming and is_fringe.
     """
-    def __init__(self, inter, dir, is_incoming, is_fringe):
-        super(Node, self).__init__()
+    def __init__(self, inter, dir, is_incoming, is_fringe, v_star=2, time=0):
+        super(Node, self).__init__(time=time)
         self.inter = inter
         self.dir = dir
         self.is_incoming = is_incoming
         self.is_fringe = is_fringe
+        if is_incoming:
+            self.lt_queue = deque()
+            self.gs_queue = deque()
+        self.v_star = v_star
         self.set_color()
         self.set_location()
     
@@ -97,7 +118,8 @@ class Node(Component):
         return is_eq
     
     def __str__(self):
-        return f"i={self.inter.i}, j={self.inter.j}, dir={self.dir}, is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
+        return f"i={self.inter.i}, j={self.inter.j}, dir={self.dir}, \
+is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
 
     def set_color(self):
         color_value = (255, 0, 0) if self.is_incoming else (0, 0, 255)
@@ -105,33 +127,58 @@ class Node(Component):
     
     def set_location(self):
         node_loc = Vector2(self.inter.loc)
-        dir_dict = Component.dir_dict
-        turn_left_dir = Component.turn_left_dir
-        turn_right_dir = Component.turn_right_dir
-        node_loc += 0.20 * to_vector2(dir_dict[self.dir])
+        tup_dir_dict = Component.tup_dir_dict
+        lt_dir_dict = Component.lt_dir_dict
+        rt_dir_dict = Component.rt_dir_dict
+        node_loc += 0.20 * to_vector2(tup_dir_dict[self.dir])
         if self.is_incoming:
-            node_loc += 0.08 * to_vector2(dir_dict[turn_left_dir[self.dir]])
+            node_loc += 0.08 * to_vector2(tup_dir_dict[lt_dir_dict[self.dir]])
         else:
-            node_loc += 0.08 * to_vector2(dir_dict[turn_right_dir[self.dir]])
+            node_loc += 0.08 * to_vector2(tup_dir_dict[rt_dir_dict[self.dir]])
         self.loc = node_loc
-
+    
+    def connect_to_edge(self, from_edge=None, lt_edge=None, gs_edge=None, rt_edge=None):
+        if from_edge is not None:
+            assert self is from_edge.end_node, "from_edge's end_node should be oneself."
+            self.from_edge = from_edge
+            from_edge.start_node.to_edge = from_edge
+        if not self.is_fringe:
+            if lt_edge is not None:
+                assert self is lt_edge.start_node, "lt_edge's start_node should be oneself."
+                self.lt_edge = lt_edge
+                lt_edge.end_node.lt_edge = lt_edge
+            if gs_edge is not None:
+                assert self is gs_edge.start_node, "gs_edge's start_node should be oneself."
+                self.gs_edge = gs_edge
+                gs_edge.end_node.lt_edge = gs_edge
+            if rt_edge is not None:
+                assert self is rt_edge.start_node, "rt_edge's start_node should be oneself."
+                self.rt_edge = rt_edge
+                rt_edge.end_node.lt_edge = rt_edge
     
     def blit(self, screen):
         pygame.draw.circle(screen, self.color, self.loc, 5, 0)
+    
+    def update(self, screen=None):
+        if self.is_incoming:
+            for i in range(self.v_star):
+                vehicle = self.lt_queue.pop()
+                
+        super(Intersection, self).update(screen=screen)
 
 
 class Edge(Component):
     delta_tL = 10  # timesteps
     delta_tI = 2   # timesteps
-    def __init__(self, start_node, end_node, is_inter):
-        super(Edge, self).__init__()
+    def __init__(self, start_node, end_node, is_inter, time=0):
+        super(Edge, self).__init__(time=time)
         self.start_node = start_node
         self.end_node = end_node
         self.is_inter = is_inter
         self.delta_t = Edge.delta_tI if is_inter else Edge.delta_tL
-        if start_node.inter == end_node.inter and not is_inter:
+        if start_node.inter is end_node.inter and not is_inter:
             raise AssertionError("Edge connects nodes internally but is_inter is False.")
-        if start_node.inter == end_node.inter and not is_inter:
+        if start_node.inter is end_node.inter and not is_inter:
             raise AssertionError("Edge connects nodes from different intersections but is_inter is True.")
         self.set_color()
 
@@ -149,8 +196,8 @@ class Edge(Component):
 
 
 class Graph(Component):
-    def __init__(self, H, L):
-        super(Graph, self).__init__()
+    def __init__(self, H, L, time=0):
+        super(Graph, self).__init__(time=time)
         self.H = H
         self.L = L
         self.construct_inters()
@@ -198,37 +245,45 @@ class Graph(Component):
     def construct_edges(self):
         H = self.H
         L = self.L
-        dir_dict = Component.dir_dict
-        opposite_dir = Component.opposite_dir
-        turn_left_dir = Component.turn_left_dir
-        turn_right_dir = Component.turn_right_dir
+        tup_dir_dict = Component.tup_dir_dict
+        op_dir_dict = Component.op_dir_dict
+        lt_dir_dict = Component.lt_dir_dict
+        rt_dir_dict = Component.rt_dir_dict
         self.edges = []
         for node in self.interm_nodes:
             if node.is_incoming:
-                dir_tuple = dir_dict[node.dir]
+                dir_tuple = tup_dir_dict[node.dir]
                 from_inter = node.inter + dir_tuple
                 i = from_inter.i
                 j = from_inter.j
                 is_fringe = True if i == 0 or i == H+1 or j == 0 or j == L+1 else False
-                from_node_idx = self.nodes.index(Node(from_inter, opposite_dir[node.dir], False, is_fringe))
-                turn_left_node_idx = self.nodes.index(Node(node.inter, turn_left_dir[node.dir], False, False))
-                go_straight_node_idx = self.nodes.index(Node(node.inter, opposite_dir[node.dir], False, False))
-                turn_right_node_idx = self.nodes.index(Node(node.inter, turn_right_dir[node.dir], False, False))
+                from_node_idx = self.nodes.index(Node(from_inter, op_dir_dict[node.dir], False, is_fringe))
+                lt_node_idx = self.nodes.index(Node(node.inter, lt_dir_dict[node.dir], False, False))
+                gs_node_idx = self.nodes.index(Node(node.inter, op_dir_dict[node.dir], False, False))
+                rt_node_idx = self.nodes.index(Node(node.inter, rt_dir_dict[node.dir], False, False))
                 from_node = self.nodes[from_node_idx]
-                turn_left_node = self.nodes[turn_left_node_idx]
-                go_straight_node = self.nodes[go_straight_node_idx]
-                turn_right_node = self.nodes[turn_right_node_idx]
-                self.edges.append(Edge(from_node, node, False))
-                self.edges.append(Edge(node, turn_left_node, True))
-                self.edges.append(Edge(node, go_straight_node, True))
-                self.edges.append(Edge(node, turn_right_node, True))
+                tl_node = self.nodes[lt_node_idx]
+                gs_node = self.nodes[gs_node_idx]
+                rt_node = self.nodes[rt_node_idx]
+                from_edge = Edge(from_node, node, False)
+                tl_edge = Edge(node, tl_node, True)
+                gs_edge = Edge(node, gs_node, True)
+                rt_edge = Edge(node, rt_node, True)
+                self.edges.append(from_edge)
+                self.edges.append(tl_edge)
+                self.edges.append(gs_edge)
+                self.edges.append(rt_edge)
+                node.connect_to_edge(from_edge, tl_edge, gs_edge, rt_edge)
+
         for node in self.fringe_nodes:
             if node.is_incoming:
-                dir_tuple = dir_dict[node.dir]
+                dir_tuple = tup_dir_dict[node.dir]
                 from_inter = node.inter + dir_tuple
-                from_node_idx = self.nodes.index(Node(from_inter, opposite_dir[node.dir], False, False))
+                from_node_idx = self.nodes.index(Node(from_inter, op_dir_dict[node.dir], False, False))
                 from_node = self.nodes[from_node_idx]
-                self.edges.append(Edge(from_node, node, False))
+                from_edge = Edge(from_node, node, False)
+                self.edges.append(from_edge)
+                node.connect_to_edge(from_edge)
     
     def blit(self, screen):
         for inter in self.inters:
