@@ -6,9 +6,8 @@ logo = pygame.image.load('images/logo_32x32.png')
 pygame.display.set_icon(logo)
 pygame.display.set_caption('Congestion Control Simulation')
 screen = pygame.display.set_mode((960, 960))
+clock = pygame.time.Clock()
 graph = Graph(3, 3)
-graph.step(screen=screen)
-pygame.display.flip()
 running = True
 while running:
     for event in pygame.event.get():
@@ -16,3 +15,6 @@ while running:
         if event.type == pygame.QUIT:
             # change the value to False, to exit the main loop
             running = False
+        graph.step(screen=screen)
+        pygame.display.flip()
+        clock.tick(1)

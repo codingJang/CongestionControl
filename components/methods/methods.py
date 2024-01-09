@@ -17,8 +17,10 @@ def center_rect(sprite):
     return sprite.display_image.get_rect().move(sprite.loc.x - sprite.width/2,
                                                 sprite.loc.y - sprite.height/2)
 
+
 def to_vector2(tuple):
     return Vector2(240 * tuple[1], 240 * tuple[0])
+
 
 def bind_vehicle_to_road(vehicle, road):
     vehicle.road = road

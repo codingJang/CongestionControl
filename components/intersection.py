@@ -65,7 +65,7 @@ class Intersection(Component):
 
     def step(self, action, screen=None):
         if action is None:
-            action = (self.time % 16) // 2
+            self.mode = (self.time % 16) // 2
         else:
             self.mode = action
         self.blit(screen)
