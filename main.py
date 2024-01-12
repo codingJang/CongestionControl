@@ -15,6 +15,7 @@ while running:
         if event.type == pygame.QUIT:
             # change the value to False, to exit the main loop
             running = False
-        graph.step(screen=screen)
-        pygame.display.flip()
-        clock.tick(1)
+    screen.fill((0, 0, 0))
+    graph.step(screen=screen)
+    pygame.display.flip()
+    clock.tick(30)

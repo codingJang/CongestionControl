@@ -1,4 +1,5 @@
 import pygame
+import numpy as np
 from components.component import Component
 from components.methods.methods import center_blit, center_rect, to_vector2
 
@@ -7,6 +8,26 @@ class Intersection(Component):
     Intersection class.
     Includes coordinates i, j as member variables, == operation and + operation.
     """
+    traffic_light = np.zeros((8, 4, 2), dtype=bool)
+    idx_1 = {'E':0, 'N':1, 'W':2, 'S':3}
+    idx_2 = {'lt':0, 'gs':1}
+    traffic_light[0, idx_1['E'], idx_2['gs']] = True
+    traffic_light[0, idx_1['W'], idx_2['gs']] = True
+    traffic_light[1, idx_1['E'], idx_2['lt']] = True
+    traffic_light[1, idx_1['W'], idx_2['lt']] = True
+    traffic_light[2, idx_1['N'], idx_2['gs']] = True
+    traffic_light[2, idx_1['S'], idx_2['gs']] = True
+    traffic_light[3, idx_1['N'], idx_2['lt']] = True
+    traffic_light[3, idx_1['S'], idx_2['lt']] = True
+    traffic_light[4, idx_1['E'], idx_2['gs']] = True
+    traffic_light[4, idx_1['E'], idx_2['lt']] = True
+    traffic_light[5, idx_1['N'], idx_2['gs']] = True
+    traffic_light[5, idx_1['N'], idx_2['lt']] = True
+    traffic_light[6, idx_1['W'], idx_2['gs']] = True
+    traffic_light[6, idx_1['W'], idx_2['lt']] = True
+    traffic_light[7, idx_1['S'], idx_2['gs']] = True
+    traffic_light[7, idx_1['S'], idx_2['lt']] = True
+
     def __init__(self, i, j, time=0):
         """
         Initializes Intersection object.
@@ -65,8 +86,9 @@ class Intersection(Component):
 
     def step(self, action, screen=None):
         if action is None:
-            self.mode = (self.time % 16) // 2
+            self.mode = (self.time % 240) // 30
         else:
             self.mode = action
-        self.blit(screen)
-        super(Intersection, self).step(screen=screen)
+        if screen is not None:
+            self.blit(screen)
+        self.time += 1

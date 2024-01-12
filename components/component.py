@@ -1,3 +1,4 @@
+import pygame
 from pygame.sprite import Sprite
 from components.methods.methods import *
 
@@ -19,6 +20,18 @@ class Component(Sprite):
         super(Component, self).__init__()
         self.time = time
         self.init_time = time
+
+    def set_image(self, path=None):
+        """
+        Sets display image and location.
+        """
+        if path is not None:
+            self.image = pygame.image.load(path)
+            self.display_image = self.image
+            self.width = self.image.get_width()
+            self.height = self.image.get_height()
+        self.rect = center_rect(self)
+        self.mask = pygame.mask.from_surface(self.display_image)
 
     def blit(self, screen):
         pass

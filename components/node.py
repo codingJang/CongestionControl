@@ -17,9 +17,11 @@ class Node(Component):
         self.dir = dir
         self.is_incoming = is_incoming
         self.is_fringe = is_fringe
-        if is_incoming:
+        if is_incoming and not is_fringe:
             self.lt_queue = deque()
             self.gs_queue = deque()
+            self.lt_signal = False
+            self.rt_signal = False
         self.v_star = v_star
         self.set_color()
         self.set_location()
@@ -47,9 +49,9 @@ is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
         rt_dir_dict = Component.rt_dir_dict
         node_loc += 0.20 * to_vector2(tup_dir_dict[self.dir])
         if self.is_incoming:
-            node_loc += 0.08 * to_vector2(tup_dir_dict[lt_dir_dict[self.dir]])
-        else:
             node_loc += 0.08 * to_vector2(tup_dir_dict[rt_dir_dict[self.dir]])
+        else:
+            node_loc += 0.08 * to_vector2(tup_dir_dict[lt_dir_dict[self.dir]])
         self.loc = node_loc
     
     def connect_to_edge(self, from_edge=None, lt_edge=None, gs_edge=None, rt_edge=None):
@@ -65,24 +67,29 @@ is_incoming={self.is_incoming}, is_fringe={self.is_fringe}"
             if gs_edge is not None:
                 assert self is gs_edge.start_node, "gs_edge's start_node should be oneself."
                 self.gs_edge = gs_edge
-                gs_edge.end_node.lt_edge = gs_edge
+                gs_edge.end_node.gs_edge = gs_edge
             if rt_edge is not None:
                 assert self is rt_edge.start_node, "rt_edge's start_node should be oneself."
                 self.rt_edge = rt_edge
-                rt_edge.end_node.lt_edge = rt_edge
+                rt_edge.end_node.rt_edge = rt_edge
     
     def blit(self, screen):
         pygame.draw.circle(screen, self.color, self.loc, 5, 0)
     
     def step(self, screen=None):
-        if self.is_incoming:
+        if self.is_incoming and not self.is_fringe:
             for _ in range(self.v_star):
-                if self.lt_queue:
+                inter = self.inter
+                if self.lt_queue and inter.traffic_light[inter.mode, inter.idx_1[self.dir], inter.idx_2['lt']]:
                     lt_vehicle = self.lt_queue.pop()
-                    lt_vehicle.where = self.lt_edge
+                    lt_vehicle.current = self.lt_edge
+                    lt_vehicle.current_idx += 1
                     lt_vehicle.timer = 0
-                if self.gs_queue:
+                if self.gs_queue and inter.traffic_light[inter.mode, inter.idx_1[self.dir], inter.idx_2['gs']]:
                     gs_vehicle = self.gs_queue.pop()
-                    gs_vehicle.where = self.gs_edge
+                    gs_vehicle.current = self.gs_edge
+                    gs_vehicle.current_idx += 1
                     gs_vehicle.timer = 0
-        super(Node, self).step(screen=screen)
+        if screen is not None:
+            self.blit(screen)
+        self.time += 1

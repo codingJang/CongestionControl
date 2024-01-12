@@ -3,8 +3,8 @@ from components.component import Component
 
 
 class Edge(Component):
-    delta_tL = 10  # timesteps
-    delta_tI = 2   # timesteps
+    delta_tL = 150  # timesteps
+    delta_tI = 15   # timesteps
     def __init__(self, start_node, end_node, is_inter, time=0):
         super(Edge, self).__init__(time=time)
         self.start_node = start_node
@@ -28,3 +28,8 @@ class Edge(Component):
     
     def blit(self, screen):
         pygame.draw.line(screen, self.color, self.start_node.loc, self.end_node.loc, 3)
+    
+    def update(self, screen):
+        if screen is not None:
+            self.blit(screen)
+        self.time += 1
